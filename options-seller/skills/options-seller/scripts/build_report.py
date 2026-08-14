@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """期权卖方报告 · 渲染（分发版）。seller_data.json + segments.json → 双页 A4 品牌 HTML。
 
 用法: python3 build_report.py [--data seller_data.json] [--segments segments.json]
