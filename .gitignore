@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.DS_Store
+seller_data.json
+期权卖方报告-*.html

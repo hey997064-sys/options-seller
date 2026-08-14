@@ -1,0 +1,13 @@
+{
+  "name": "options-seller-market",
+  "owner": {
+    "name": "Longbridge Options Content"
+  },
+  "plugins": [
+    {
+      "name": "options-seller",
+      "source": "./options-seller",
+      "description": "期权卖方报告：输入美股标的，本机一键生成双向三档卖方合约筛选报告（sell put / covered call），含期权墙分布与风险披露"
+    }
+  ]
+}
