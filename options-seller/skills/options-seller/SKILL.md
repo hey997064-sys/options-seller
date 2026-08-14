@@ -11,11 +11,13 @@ description: "期权卖方报告：输入美股标的（如 NVDA / TSLA / INTC�
 
 ## 执行管线（四步，顺序不可变）
 
-所有产物放独立目录，避免覆盖上次结果：
+所有产物放独立目录（建在用户当前目录下），避免覆盖上次结果：
 
 ```bash
-mkdir -p options-seller-<CODE>-$(date +%Y%m%d) && cd options-seller-<CODE>-$(date +%Y%m%d)
+mkdir -p options-seller-<CODE>-$(date +%F) && cd options-seller-<CODE>-$(date +%F)
 ```
+
+路径说明：`${CLAUDE_PLUGIN_ROOT}` 指向插件根目录；若是手动 git clone 使用，插件根 = `<仓库>/options-seller/`（仓库根上还有一层 marketplace 清单）。
 
 ### Step 0 · 首次使用先自检
 
@@ -23,7 +25,7 @@ mkdir -p options-seller-<CODE>-$(date +%Y%m%d) && cd options-seller-<CODE>-$(dat
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/options-seller/scripts/doctor.py"
 ```
 
-任何 ✗ 都**停止流程**，把"修复"行原样告诉用户。全 ✓ 才继续（同一台机器通过过一次后可跳过本步）。
+任何 ✗ 都**停止流程**，把"修复"行原样告诉用户。全 ✓ 才继续。不确定这台机器是否检查过时，直接重跑（十几秒，无副作用）。
 
 ### Step 1 · 取数
 
@@ -58,11 +60,37 @@ stderr 出现 `warn:` 前缀（个别报价块失败）不阻断，但要在最�
 6. m1 若 news 为空或全不相关，写盘面本身（涨跌、IV 变化），不编新闻。
 7. 财报若带 `--allow-earnings` 越过（earnings.next_in_window 非空），m1 必须包含一句财报日期提示。
 
+**占位符对照（符号已含在值里，照"用法"列写，勿自作主张加正负号）：**
+
+| 占位符 | 含义 | 符号 | 用法 |
+|---|---|---|---|
+| `{spot}` `{cw}` `{pw}` `{mp_strike}` | 现价 / 各侧主墙 / MaxPain 价 | 无 | `${cw}` |
+| `{iv}` `{hv}` | 平值 IV / 历史波动（数值） | 无 | `{iv}%` |
+| `{cw_dist}` | 上墙距现价% | 恒正、无号 | `+{cw_dist}%` |
+| `{pw_dist}` | 下墙距现价% | 自带负号 | `{pw_dist}%` |
+| `{mp_dist}` `{spread}` | MaxPain 距离% / IV−HV | 自带正负号 | `{mp_dist}%`、`{spread}pp` |
+
+**细则（歧义裁定，遇到即照此执行）：**
+
+- **术语白名单** = 报告模板已出现的词（IV、HV、PCR、Max Pain、delta/Δ、sell put、covered call）；禁的是白名单之外的行话（vega、gamma、IV 分位、Greeks、skew）
+- **"不给方向判断"** 指不判断股价要涨要跌；"租金贵/打折"是 IV 与 HV 的数据对比结论，允许且必写
+- **墙厚度口径** = 主墙单一行权价的窗口合计 OI（与图表标注一致），可从 oi_dist 引用原数；每侧的第二道墙在 call_walls/put_walls 数组里，需要时可写"次墙"
+- `{cw}`/`{pw}` = 各侧**主墙**（OI 最大一档）
+- **sym_cn**：用大众常用中文名（英伟达/苹果）；无通行中文名的标的直接写代码（AMD 就填 AMD），不生造译名
+- **m1 的 ≤3 句含固定末句**（财报位置那句算在 3 句内）
+- **新闻标题内数字的单位换算/进位允许**（$4.75 billion → 47.5 亿美元），不算编数
+- **next_earnings**：财报在窗口外时留 null（渲染自动显示"窗口外"），不必去查具体日期
+- **程度词允许**（有所/偏/相对/略），禁的是无依据的猜测语气（可能/或许/大概）
+- segments.json 里 `_readme` 字段可保留，渲染时自动忽略
+- 页面「AI 视角」标 = 01 今日热点、02 盘面定调两段；sym_tone 与读图注脚同为你起草，但不在该标之内
+
 ### Step 3 · 渲染并交付
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/options-seller/scripts/build_report.py"
 ```
+
+（输入契约：从**当前目录**读 seller_data.json 与 segments.json，也可用 `--data/--segments` 指定。）
 
 断言失败（AssertionError）= 数据被破坏，停止并转述，不出报告。
 

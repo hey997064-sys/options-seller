@@ -274,8 +274,8 @@ def main():
         json.dump(out, f, ensure_ascii=False, indent=1)
     print(f"written {a.out}")
     print(f"spot={spot} ({chg_pct:+}% vs prev)" if chg_pct is not None else f"spot={spot}")
-    print(f"expiries={expiries} call_wall={cw} put_wall={pw} pcr={pcr_oi} "
-          f"iv={atm_iv} hv={hv_pct} max_pain={mp_strike}")
+    print(f"expiries={expiries} call_wall={cw}(OI {oi_dist[cw][0]:,}) put_wall={pw}(OI {oi_dist[pw][1]:,}) "
+          f"pcr={pcr_oi} iv={atm_iv} hv={hv_pct} max_pain={mp_strike}")
     for side_name, lst in (("PUT", picks["P"]), ("CALL", picks["C"])):
         for c in lst:
             print(f"  {side_name} {c['band']}: {c['exp']} K{c['strike']:g} prem={c['prem']}"

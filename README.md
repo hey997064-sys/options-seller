@@ -15,6 +15,8 @@
    /plugin marketplace add hey997064-sys/options-seller
    /plugin install options-seller@options-seller-market
    ```
+> 不走 marketplace 也可手动 `git clone` 本仓库使用：插件根目录 = `<仓库>/options-seller/`
+
 3. 自检环境（首次）：对 Claude 说 **"检查一下期权卖方报告的环境"**，或直接开始使用，skill 会先跑 doctor 自检
 
 ## 使用

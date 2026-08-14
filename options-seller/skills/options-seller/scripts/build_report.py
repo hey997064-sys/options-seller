@@ -10,7 +10,7 @@ import argparse
 import json
 import math
 
-ap = argparse.ArgumentParser()
+ap = argparse.ArgumentParser(description="从当前目录读 seller_data.json + segments.json 渲染报告")
 ap.add_argument("--data", default="seller_data.json")
 ap.add_argument("--segments", default="segments.json")
 args = ap.parse_args()
