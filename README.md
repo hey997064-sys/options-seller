@@ -12,7 +12,7 @@
 1. **安装并登录 longbridge CLI**（需要长桥账户，且已开通**美股期权行情**）
 2. 在 Claude Code 中添加市场并安装插件：
    ```
-   /plugin marketplace add <你的GitHub用户名>/options-seller
+   /plugin marketplace add hey997064-sys/options-seller
    /plugin install options-seller@options-seller-market
    ```
 3. 自检环境（首次）：对 Claude 说 **"检查一下期权卖方报告的环境"**，或直接开始使用，skill 会先跑 doctor 自检
