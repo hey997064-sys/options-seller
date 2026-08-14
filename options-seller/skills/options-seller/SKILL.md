@@ -48,7 +48,7 @@ stderr 出现 `warn:` 前缀（个别报价块失败）不阻断，但要在最�
 
 ### Step 2 · 起草 segments.json（唯一的 AI 环节）
 
-复制模板起草：模板在 `${CLAUDE_PLUGIN_ROOT}/skills/options-seller/scripts/segments.template.json`，逐字段填写后存为当前目录 `segments.json`。
+复制模板起草：模板在 `${CLAUDE_PLUGIN_ROOT}/skills/options-seller/scripts/segments.template.json`，逐字段填写后存为当前目录 `segments.json`，`_source` 保持 `"ai"`（报告据此渲染「AI 视角」标；`make_segments.py` 生成的零 AI 版为 `"auto"`，渲染「自动摘要」标——两种来源标签不可混用）。
 
 **写作纪律（违反任意一条 = 重写）：**
 

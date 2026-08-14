@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (2026-08-14)
+
+AI 运行时适配：不再假设用户有 Claude。
+
+- 新增三级用法：A Claude Code 全自动 / B 任意 AI 助手（PROMPT.md 通用提示词）/ C 零 AI（run.py 一键，固定规则文案）
+- 新增 make_segments.py：纯规则生成中性数据陈述文案（_source=auto）
+- 新增 run.py 一键入口：doctor → 取数 → 自动文案 → 渲染 → 打开（--skip-doctor / --no-open / --allow-earnings）
+- 新增 PROMPT.md：运行时无关的通用 AI 提示词（含占位符表与全部写作纪律）
+- 责任分区：段落标签随 _source 切换——AI 起草挂「AI 视角」，规则生成挂「自动摘要」，口径说明同步改写，不让机械文案冒充 AI 观点
+
 ## 0.1.1 (2026-08-14)
 
 沙盒净装 + 双盲用户测试后的修复轮：

@@ -1,4 +1,5 @@
 {
+ "_source": "ai",
  "_readme": "结论/文案层模板。按 SKILL.md Step 2 的写作纪律逐字段填写，存为工作目录 segments.json。占位符（渲染时自动填数）：{spot} {cw} {pw} {cw_dist} {pw_dist} {mp_strike} {mp_dist} {iv} {hv} {spread}。",
  "series_title": "期权卖方报告：把波动率变成租金",
  "series_sub": "不猜方向，只做承诺：在你愿意成交的价格上把「承诺」卖出去，收下时间价值。",

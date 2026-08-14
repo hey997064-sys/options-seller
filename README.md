@@ -19,13 +19,27 @@
 
 3. 自检环境（首次）：对 Claude 说 **"检查一下期权卖方报告的环境"**，或直接开始使用，skill 会先跑 doctor 自检
 
-## 使用
+## 使用（按你手里有什么 AI，三选一）
 
-对 Claude 说：
+**A · 有 Claude Code / Cowork**（全自动，体验最好）
 
 > 出一份 NVDA 的卖方报告 / 帮我看看 TSLA 能卖什么期权 / /options-seller INTC
 
-约 1–2 分钟后浏览器自动打开报告。报告中"AI 视角"标注的段落为观点性内容，合约行全部由机械规则筛出。
+约 1–2 分钟后浏览器自动打开报告，热点与盘面段由 AI 撰写（页面挂「AI 视角」标）。
+
+**B · 用别的 AI 助手**（ChatGPT / Kimi / 豆包等都行）
+
+```bash
+python3 <插件目录>/skills/options-seller/scripts/run.py NVDA
+```
+
+先得到一份"自动摘要"版报告；想升级成 AI 撰写版，把 `skills/options-seller/PROMPT.md` 全文 + 生成的 `seller_data.json` 发给你的 AI 助手，把它返回的 JSON 存为 `segments.json`，再跑一次 `build_report.py` 即可。
+
+**C · 完全不用 AI**（一条命令）
+
+同上 `run.py NVDA` 直接用：合约筛选、期权墙、KPI 全部照常（这些本来就是机械规则），两段文字为固定规则生成的数据陈述，页面挂「自动摘要」标以示区分。
+
+报告中的合约行、图表与指标在三种用法下完全一致——AI 只负责两段解读文字，从不碰数字。
 
 ## 出问题了？
 

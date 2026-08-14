@@ -44,7 +44,12 @@ def fill(v):
     return v
 
 
-SEGMENTS = {k: fill(v) for k, v in json.load(open(args.segments)).items() if k != "_readme"}
+_seg_raw = json.load(open(args.segments))
+SEG_SOURCE = _seg_raw.get("_source", "ai")          # ai=AI 起草 | auto=固定规则生成（零 AI 模式）
+AI_TAG = "AI 视角" if SEG_SOURCE == "ai" else "自动摘要"
+SEG_ORIGIN = "为 AI 基于当日数据与公开新闻生成的观点性内容，仅代表数据视角" if SEG_SOURCE == "ai" \
+    else "由固定规则从当日数据自动生成（未使用 AI），仅为数据陈述"
+SEGMENTS = {k: fill(v) for k, v in _seg_raw.items() if not k.startswith("_")}
 NEXT_EARNINGS = SEGMENTS.get("next_earnings") or (
     f"{D['earnings']['next_in_window']} ⚠ 窗口内" if D["earnings"].get("next_in_window") else "窗口外")
 # ============================================================================
@@ -297,10 +302,10 @@ page1 = f"""
     <div class="stat"><div class="k">下次财报</div><div class="v" data-ed="next_earnings">{NEXT_EARNINGS}</div></div>
   </div>
 
-  <h2 class="sec"><span class="num">01</span>今日热点<span class="ai">AI 视角</span></h2>
+  <h2 class="sec"><span class="num">01</span>今日热点<span class="ai">{AI_TAG}</span></h2>
   <p class="body" data-ed="m1">{SEGMENTS['m1']}</p>
 
-  <h2 class="sec"><span class="num">02</span>期权盘面定调<span class="ai">AI 视角</span></h2>
+  <h2 class="sec"><span class="num">02</span>期权盘面定调<span class="ai">{AI_TAG}</span></h2>
   <div class="aibox"><p data-ed="m2">{SEGMENTS['m2']}</p></div>
 
   <h2 class="sec"><span class="num">03</span>指标支撑</h2>
@@ -334,7 +339,7 @@ page2 = f"""
   <div class="rules-line"><b>常见管理惯例（45/21/50）：</b>业内常见做法是浮盈达最大利润一半即平仓，剩 21 天未达利润线平仓或滚动到下月同 delta；被行权本就是该策略的组成部分——接货价与交货价都是事先选定的价位。</div>
 
   <div class="callout spec" style="margin-top:2.5mm"><span class="label">口径说明</span>
-    「今日热点」「盘面定调」为 AI 基于当日数据与公开新闻生成的观点性内容，仅代表数据视角；合约由既定规则筛出（财报落在窗口内拒出报告 → OI≥10 & 权利金≥$0.05 → delta 定档 → 档内评分取优），「墙外」= 行权价位于对应主墙之上（Call）或之下（Put）。年化回报率按现金担保全额计算（看跌按行权价全额、看涨按正股市值），未使用杠杆；权利金为最新成交价；价外概率 ≈ 1−|Δ|；delta 由隐含波动率经 Black-Scholes 计算。OI 分布、双墙与 PCR 均按筛选窗口（{EXP_LABELS} 到期）合计；Max Pain 按窗口内最近到期日（{int(MP['expiry'][5:7])}/{int(MP['expiry'][8:10])}）计算。数据基于 {D['asof']} 本机实时快照。
+    「今日热点」「盘面定调」{SEG_ORIGIN}；合约由既定规则筛出（财报落在窗口内拒出报告 → OI≥10 & 权利金≥$0.05 → delta 定档 → 档内评分取优），「墙外」= 行权价位于对应主墙之上（Call）或之下（Put）。年化回报率按现金担保全额计算（看跌按行权价全额、看涨按正股市值），未使用杠杆；权利金为最新成交价；价外概率 ≈ 1−|Δ|；delta 由隐含波动率经 Black-Scholes 计算。OI 分布、双墙与 PCR 均按筛选窗口（{EXP_LABELS} 到期）合计；Max Pain 按窗口内最近到期日（{int(MP['expiry'][5:7])}/{int(MP['expiry'][8:10])}）计算。数据基于 {D['asof']} 本机实时快照。
   </div>
   <div class="callout warn"><span class="label">风险披露</span>
     本内容仅作期权知识介绍与教学展示，并非及不应被视为任何证券、金融产品或工具的邀约、要约、招揽、邀请、或任何投资决策的建议，亦不应被视为专业意见；文中合约由既定规则从市场数据中筛出，仅为教学示例，不构成对任何标的的推荐。期权为复杂产品，交易规则较为复杂，非保本，买卖期权合约的亏蚀风险可能极大：卖出看跌期权的最大亏损为行权价全额（扣除权利金），卖出看涨期权将放弃行权价以上的全部涨幅。请确认您已充分掌握期权交易的规则，并了解期权价格与股票价格走势之间的联系后，评估是否可以承担投资期权带来的风险，然后再开始进入期权交易。本页面如有类似前瞻性陈述之内容，此等内容或陈述不得视为对任何将来表现之保证，且应注意实际情况或发展可能与该等陈述有重大落差。以上图表及案例仅为模拟计算，用作教学展示，未计入佣金、平台费、交易所费用等交易成本，实际损益将有所不同。投资涉及风险，投资产品价格可升可跌，入市需谨慎。
