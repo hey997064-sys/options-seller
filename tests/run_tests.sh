@@ -23,6 +23,22 @@ LB_MODE=nologin "$PY" "$S/doctor.py" >/dev/null 2>&1;     chk "未登录→docto
 LB_MODE=nochain "$PY" "$S/seller_fetch.py" MOCK >/dev/null 2>&1; chk "无期权链→exit3" 3 $?
 LB_MODE=nooi   "$PY" "$S/seller_fetch.py" MOCK >/dev/null 2>&1;  chk "无行情权限→exit6" 6 $?
 "$PY" "$S/seller_fetch.py" >/dev/null 2>&1;               chk "缺参数→exit2" 2 $?
+"$PY" "$S/seller_fetch.py" 'BAD-1' >/dev/null 2>&1;       chk "非法代码→exit2" 2 $?
+
+echo "== 脏数据族（应收敛为 exit4 人话，无裸 traceback）"
+for m in quotedict missingfield klinenoclose nullcal; do
+  ERR=$(LB_MODE=$m "$PY" "$S/seller_fetch.py" MOCK 2>&1 >/dev/null); rc=$?
+  chk "LB_MODE=$m→exit4" 4 $rc
+  echo "$ERR" | grep -q "Traceback"; [ $? -ne 0 ]; chk "  $m 无裸traceback" 0 $?
+done
+
+echo "== zerocall（call OI 全 0：PCR 置空 + 缺档提示，不崩）"
+LB_MODE=zerocall "$PY" "$S/seller_fetch.py" MOCK >/dev/null 2>&1; chk "zerocall 取数" 0 $?
+LB_MODE=zerocall "$PY" "$S/make_segments.py" --force >/dev/null 2>&1 && "$PY" "$S/build_report.py" >/dev/null 2>&1
+chk "zerocall 渲染" 0 $?
+HZ=$(ls -t 期权卖方报告-MOCK-*.html | head -1)
+grep -q "档本期无符合筛选条件的合约" "$HZ"; chk "缺档提示在场" 0 $?
+rm -f seller_data.json segments.json
 
 echo "== 零 AI 全流程（LB_MODE=ok 离线）"
 "$PY" "$S/run.py" MOCK --skip-doctor --no-open >/dev/null 2>&1; chk "run.py 一键全流程" 0 $?
@@ -42,6 +58,20 @@ json.dump(d, open("segments.json", "w"), ensure_ascii=False)
 PYEOF
 "$PY" "$S/build_report.py" >/dev/null 2>&1; chk "AI 模式渲染" 0 $?
 grep -q "AI 视角" "$H";  chk "AI 模式挂「AI 视角」标" 0 $?
+
+echo "== segments 容错（B 级外部 AI 产出）"
+"$PY" - <<PYEOF
+import json
+d = json.load(open("segments.json")); d.pop("m2"); d["kpi_meaning"].pop("walls")
+json.dump(d, open("segments_bad.json", "w"), ensure_ascii=False)
+d2 = json.load(open("segments.json")); d2["m2"] = "含裸花括号 { 的 AI 文字，且有未知占位符 {gamma}"
+json.dump(d2, open("segments_brace.json", "w"), ensure_ascii=False)
+PYEOF
+ERR=$("$PY" "$S/build_report.py" --segments segments_bad.json 2>&1 >/dev/null); rc=$?
+chk "缺必填字段→exit1" 1 $rc
+echo "$ERR" | grep -q "m2"; chk "  报错点名缺失字段" 0 $?
+"$PY" "$S/build_report.py" --segments segments_brace.json >/dev/null 2>&1
+chk "裸花括号/未知占位符→容错渲染" 0 $?
 
 echo "== mutation：数字防篡改"
 "$PY" - <<PYEOF

@@ -15,6 +15,7 @@
 import argparse
 import json
 import math
+import os
 import re
 import statistics
 import subprocess
@@ -89,11 +90,13 @@ def main():
     a = ap.parse_args()
 
     symbol = a.symbol.upper()
-    if "." not in symbol:
-        symbol += ".US"
     if not symbol.endswith(".US"):
-        die(2, "仅支持美股标的（<CODE> 或 <CODE>.US）")
-    code = symbol.split(".")[0]
+        symbol += ".US"                       # 支持 BRK.B 这类带点代码（BRK.B → BRK.B.US）
+    base = symbol[:-3]                        # 展示/行情查询用（保留点）
+    occ = base.replace(".", "")               # 期权合约符号用（OCC 去点：BRK.B → BRKB）
+    if not re.fullmatch(r"[A-Z][A-Z.]{0,9}", base):
+        die(2, "仅支持美股标的（<CODE> 或 <CODE>.US，如 NVDA / BRK.B）")
+    code = base
     today = date.fromisoformat(a.today) if a.today else date.today()
 
     # ---- 现价 ----
@@ -129,7 +132,8 @@ def main():
     events = []
     for day in (cal.get("list") or []):
         for info in (day.get("infos") or []):
-            if code not in str(info.get("counter_id", "")):
+            cid = str(info.get("counter_id", ""))
+            if base not in cid and occ not in cid:
                 continue
             raw_d = str(day.get("date") or info.get("date") or "")
             m = re.search(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})", raw_d)
@@ -142,6 +146,10 @@ def main():
     if events:
         earnings_next = sorted(events)[0]
         if not a.allow_earnings:
+            # 拒跑时把上次残留的数据文件改名，防止旧数据被误渲染成"今天的报告"
+            if os.path.exists(a.out):
+                os.replace(a.out, a.out + ".stale")
+                print(f"note: 已将残留的旧数据改名为 {a.out}.stale，避免误用", file=sys.stderr)
             die(5, f"{code} 下次财报 {earnings_next} 落在持仓窗口内（最远到期 {max(expiries)}）。"
                    f"财报夜波动会击穿卖方策略，本工具默认拒绝出报告；"
                    f"如确要继续请加 --allow-earnings（报告将标注财报风险）")
@@ -161,7 +169,7 @@ def main():
     atm_iv = None
     near_exp = min(expiries, key=lambda e: all_exps[e])
     atm_exp = min(expiries, key=lambda e: abs(all_exps[e] - 30))
-    failed_chunks = 0
+    failed_chunks = total_chunks = 0
     for exp in expiries:
         dte = all_exps[exp]
         chain = cli("option", "chain", symbol, "--date", exp)
@@ -170,13 +178,17 @@ def main():
         if exp == atm_exp and chain:
             atm_row = min(chain, key=lambda r: abs(float(r["strike"]) - spot))
             raw = float(atm_row.get("put_iv") or 0)
-            # 链返回的 IV 为小数（0.68）；防御性兼容百分数形态
-            atm_iv = round(raw * 100, 1) if 0 < raw < 3 else (round(raw, 1) or None)
+            # CLI 契约：链上 IV 恒为小数（0.68 = 68%），统一 ×100；仅对离谱值兜底置空
+            atm_iv = round(raw * 100, 1) if raw > 0 else None
+            if atm_iv and atm_iv > 500:
+                print(f"warn: ATM IV={atm_iv}% 超出合理范围，置为缺失", file=sys.stderr)
+                atm_iv = None
         yy, mm, dd = exp[2:4], exp[5:7], exp[8:10]
-        syms = [(f"{code}{yy}{mm}{dd}{side}{int(k * 1000)}.US", k, side)
+        syms = [(f"{occ}{yy}{mm}{dd}{side}{int(k * 1000)}.US", k, side)
                 for k in strikes for side in ("C", "P")]
         quotes = {}
         for i in range(0, len(syms), CHUNK):
+            total_chunks += 1
             chunk = [s[0] for s in syms[i:i + CHUNK]]
             res = cli_soft("option", "quote", *chunk) or cli_soft("option", "quote", *chunk)  # 失败重试一次
             if res is None:
@@ -211,6 +223,10 @@ def main():
                               score=round((1 - abs(delta)) * (250 / (dte + 5)) * (prem / k), 4)))
 
     if not oi_dist:
+        # 区分两类"全空"：请求全部失败=网络/代理问题(exit 4)；请求成功但返回空=权限问题(exit 6)
+        if total_chunks and failed_chunks == total_chunks:
+            die(4, f"{symbol} 期权报价请求全部失败（网络或代理异常，非权限问题），"
+                   f"请稍后重试；持续失败请运行 doctor.py 自检")
         die(6, f"{symbol} 期权报价全部取不到——大概率是账户没有美股期权行情权限。"
                f"请在长桥 App 内开通美股期权行情后重试（可先跑 doctor.py 自检确认）")
     if failed_chunks:
@@ -292,4 +308,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (KeyError, TypeError, AttributeError, IndexError, ValueError) as e:
+        # 行情返回结构异常统一收敛为 exit 4 人话（AssertionError 除外——那是口径被破坏，要裸暴露）
+        print(f"行情返回格式异常（{type(e).__name__}: {e}），请稍后重试；"
+              f"持续出现请运行 doctor.py 自检并反馈", file=sys.stderr)
+        sys.exit(4)

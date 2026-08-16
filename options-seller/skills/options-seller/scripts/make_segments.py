@@ -42,9 +42,9 @@ seg = {
  "_source": "auto",
  "series_title": "期权卖方报告：把波动率变成租金",
  "series_sub": "不猜方向，只做承诺：在你愿意成交的价格上把「承诺」卖出去，收下时间价值。",
- "sym_cn": D.get("name") or D["symbol"].split(".")[0],
+ "sym_cn": D.get("name") or D["symbol"].rsplit(".", 1)[0],
  "sym_tone": f"{tone_vol} · {tone_thr}",
- "m1": f"{D['symbol'].split('.')[0]} 最新报 ${spot:g}，{chg_txt}。本期筛选窗口为 {exp_labels} 到期。{earn_txt}",
+ "m1": f"{D['symbol'].rsplit('.', 1)[0]} 最新报 ${spot:g}，{chg_txt}。本期筛选窗口为 {exp_labels} 到期。{earn_txt}",
  "m2": "窗口内看涨持仓最厚的一档在 ${cw}（现价 +{cw_dist}%），看跌最厚的一档在 ${pw}（{pw_dist}%）。"
        "市场定价的 30 天波动预期为 {iv}%，近 30 个交易日实际波动为 {hv}%，两者之差 {spread}pp。"
        "Max Pain ${mp_strike} 位于现价 {mp_dist}% 处。以上为数据陈述，不构成方向判断。",

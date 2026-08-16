@@ -9,6 +9,8 @@
 import argparse
 import json
 import math
+import sys
+from datetime import date
 
 ap = argparse.ArgumentParser(description="从当前目录读 seller_data.json + segments.json 渲染报告")
 ap.add_argument("--data", default="seller_data.json")
@@ -16,7 +18,10 @@ ap.add_argument("--segments", default="segments.json")
 args = ap.parse_args()
 
 D = json.load(open(args.data))
-CODE = D["symbol"].split(".")[0]
+CODE = D["symbol"].rsplit(".", 1)[0]
+if D.get("asof") and D["asof"] != str(date.today()):
+    print(f"warn: 数据快照日期为 {D['asof']}，不是今天——如非有意重渲旧报告，请先重新取数",
+          file=sys.stderr)
 KPI = D["kpi"]
 MP = KPI["max_pain"]
 SPOT = D["spot"]
@@ -36,15 +41,35 @@ PLACEHOLDERS = dict(
 )
 
 
+class _SafeMap(dict):
+    def __missing__(self, key):          # 未知占位符原样保留并告警，不崩（外部 AI 产出容错）
+        print(f"warn: 未知占位符 {{{key}}}，原样保留", file=sys.stderr)
+        return "{" + key + "}"
+
+
 def fill(v):
     if isinstance(v, str):
-        return v.format(**PLACEHOLDERS)
+        try:
+            return v.format_map(_SafeMap(PLACEHOLDERS))
+        except (ValueError, IndexError):  # 文字里的裸花括号（AI 输出常见），整段原样保留
+            print(f"warn: 文字含未配对花括号，跳过占位符替换: {v[:40]}…", file=sys.stderr)
+            return v
     if isinstance(v, dict):
         return {k: fill(x) for k, x in v.items()}
     return v
 
 
 _seg_raw = json.load(open(args.segments))
+_REQUIRED = ["series_title", "series_sub", "sym_cn", "sym_tone", "m1", "m2",
+             "kpi_meaning", "m4_note", "strat_put", "strat_call"]
+_KPI_KEYS = ["pcr", "iv", "hv", "spread", "max_pain", "walls"]
+_missing = [k for k in _REQUIRED if k not in _seg_raw] + \
+           [f"kpi_meaning.{k}" for k in _KPI_KEYS
+            if isinstance(_seg_raw.get("kpi_meaning"), dict) and k not in _seg_raw["kpi_meaning"]]
+if _missing or not isinstance(_seg_raw.get("kpi_meaning"), dict):
+    print("segments.json 缺少必填字段: " + ", ".join(_missing or ["kpi_meaning"]) +
+          "\n请对照 segments.template.json 补全后重跑（外部 AI 产出请检查是否漏字段）", file=sys.stderr)
+    sys.exit(1)
 SEG_SOURCE = _seg_raw.get("_source", "ai")          # ai=AI 起草 | auto=固定规则生成（零 AI 模式）
 AI_TAG = "AI 视角" if SEG_SOURCE == "ai" else "自动摘要"
 SEG_ORIGIN = "为 AI 基于当日数据与公开新闻生成的观点性内容，仅代表数据视角" if SEG_SOURCE == "ai" \
@@ -64,6 +89,15 @@ def fmt_oi_wan(n):
 def fmt_contract(c):
     e = c["exp"]
     return f"{CODE} {e[2:4]}{e[5:7]}{e[8:10]} {c['strike']:g}{c['side']}"
+
+
+def missing_note(legs):
+    have = {c["band"] for c in legs}
+    miss = [b for b in ("稳健", "均衡", "进取") if b not in have]
+    if not miss:
+        return ""
+    return (f'<p class="stratline" style="color:var(--text-tertiary)">'
+            f'注：{"、".join(miss)}档本期无符合筛选条件的合约（流动性或 delta 区间未命中），留空。</p>')
 
 
 def leg_rows(legs, cls):
@@ -333,9 +367,11 @@ page2 = f"""
   <div class="sidehead put">现金担保看跌 · SELL PUT —— 手里有现金（占用现金 = 行权价 × 100）</div>
   <p class="stratline" data-ed="strat_put">{SEGMENTS['strat_put']}</p>
   {leg_rows(D['puts'], 'put')}
+  {missing_note(D['puts'])}
   <div class="sidehead call">股票担保看涨 · SELL CALL —— 手里有 100 股（门槛 ≈ ${SPOT * 100:,.0f}）</div>
   <p class="stratline" data-ed="strat_call">{SEGMENTS['strat_call']}</p>
   {leg_rows(D['calls'], 'call')}
+  {missing_note(D['calls'])}
 
   <div class="rules-line"><b>常见管理惯例（45/21/50）：</b>业内常见做法是浮盈达最大利润一半即平仓，剩 21 天未达利润线平仓或滚动到下月同 delta；被行权本就是该策略的组成部分——接货价与交货价都是事先选定的价位。</div>
 
