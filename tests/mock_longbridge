@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""假 longbridge CLI：离线模拟不同用户环境，供回归测试（tests/run_tests.sh）使用。
+LB_MODE: ok(默认) | nologin(未登录) | nochain(无期权链) | nooi(无期权行情权限)
+       | quotedict(quote 返回 dict) | missingfield(报价缺 open_interest)
+       | klinenoclose(K线缺 close) | nullcal(财报日历返回 null) | zerocall(call OI 全 0)"""
+import json
+import math
+import os
+import re
+import sys
+from datetime import date, timedelta
+
+MODE = os.environ.get("LB_MODE", "ok")
+argv = [a for a in sys.argv[1:] if a not in ("--format", "json")]
+TODAY = date.today()
+SPOT = 100.0
+
+
+def out(obj):
+    print(json.dumps(obj))
+    sys.exit(0)
+
+
+if MODE == "nologin":
+    print("error: not logged in. run `longbridge login` first", file=sys.stderr)
+    sys.exit(1)
+
+cmd = argv[0] if argv else ""
+
+if cmd == "quote":
+    if MODE == "quotedict":
+        out({"symbol": argv[1], "last": f"{SPOT}"})
+    out([{"symbol": argv[1], "last": f"{SPOT}", "prev_close": "98.00"}])
+
+if cmd == "static":
+    out([{"symbol": argv[1], "name": "MockCorp"}])
+
+if cmd == "news":
+    out([{"title": "MockCorp shares rally on synthetic catalyst", "published_at": str(TODAY)}])
+
+if cmd == "kline":
+    if MODE == "klinenoclose":
+        out([{"timestamp": i} for i in range(50)])
+    out([{"close": f"{100 + 3 * math.sin(i / 3):.2f}", "timestamp": i} for i in range(50)])
+
+if cmd == "finance-calendar":
+    if MODE == "nullcal":
+        out(None)
+    out({"date": str(TODAY), "list": [], "next_date": "", "result": {}})
+
+if cmd == "option" and argv[1] == "chain" and "--date" not in argv:
+    if MODE == "nochain":
+        out([])
+    out([{"expiry_date": str(TODAY + timedelta(days=d))} for d in (7, 15, 30, 37, 44, 58, 90)])
+
+if cmd == "option" and argv[1] == "chain":
+    out([{"strike": f"{k}", "put_iv": "0.50", "call_iv": "0.50"} for k in range(70, 132, 5)])
+
+if cmd == "option" and argv[1] == "quote":
+    if MODE == "nooi":
+        out([])
+    res = []
+    for sym in argv[2:]:
+        m = re.match(r"^[A-Z]+\d{6}([CP])(\d+)\.US$", sym)
+        if not m:
+            continue
+        side, k = m.group(1), int(m.group(2)) / 1000
+        dist = abs(k - SPOT) / SPOT
+        prem = max(0.06, 6.0 * math.exp(-8 * dist))
+        oi = int(3000 * math.exp(-6 * dist)) + 50
+        if side == "C" and k == 110:
+            oi = 50000
+        if side == "P" and k == 90:
+            oi = 40000
+        if MODE == "zerocall" and side == "C":
+            oi = 0
+        row = {"symbol": sym, "last": f"{prem:.2f}", "implied_volatility": "0.50",
+               "open_interest": str(oi)}
+        if MODE == "missingfield":
+            row.pop("open_interest")
+        res.append(row)
+    out(res)
+
+print(f"mock longbridge: unknown command {argv}", file=sys.stderr)
+sys.exit(1)

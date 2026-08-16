@@ -36,7 +36,8 @@ def main():
     if "--allow-earnings" in flags:
         fetch_args.append("--allow-earnings")
     step("取数", fetch_args)
-    step("生成自动文案（零 AI 模式）", [os.path.join(HERE, "make_segments.py")])
+    # --force：同目录重跑时文案随数据重建，避免"新数据+旧文案"自相矛盾（评测 P1-3）
+    step("生成自动文案（零 AI 模式）", [os.path.join(HERE, "make_segments.py"), "--force"])
     step("渲染", [os.path.join(HERE, "build_report.py")])
     import glob
     outs = sorted(glob.glob("期权卖方报告-*.html"), key=os.path.getmtime)

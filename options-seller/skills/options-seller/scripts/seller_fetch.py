@@ -15,6 +15,7 @@
 import argparse
 import json
 import math
+import re
 import statistics
 import subprocess
 import sys
@@ -128,8 +129,16 @@ def main():
     events = []
     for day in (cal.get("list") or []):
         for info in (day.get("infos") or []):
-            if code in str(info.get("counter_id", "")):
-                events.append(day.get("date") or info.get("date"))
+            if code not in str(info.get("counter_id", "")):
+                continue
+            raw_d = str(day.get("date") or info.get("date") or "")
+            m = re.search(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})", raw_d)
+            if not m:
+                continue
+            d_iso = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+            # 本地二次过滤：CLI 的 --end 不可信，实测会返回窗口外事件（评测 P1-1）
+            if str(today) <= d_iso <= max(expiries):
+                events.append(d_iso)
     if events:
         earnings_next = sorted(events)[0]
         if not a.allow_earnings:

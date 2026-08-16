@@ -135,9 +135,10 @@ def oi_chart():
             f'aria-label="{CODE} 期权持仓分布与墙">' + "".join(parts) + "</svg>")
 
 
-# 断言层：渲染前最后一道守门
+# 断言层：渲染前最后一道守门（与取数层同构，防中途篡改）
 for c in D["puts"] + D["calls"]:
     assert abs(c["prob_otm"] + abs(c["delta"]) - 1) < 0.001
+    assert abs(c["ann"] - c["ret_period"] * 365 / c["dte"]) < 0.001
     assert 28 <= c["dte"] <= 46
 assert D["oi_dist"][f"{CW:g}"][0] == max(v[0] for v in D["oi_dist"].values())
 assert D["oi_dist"][f"{PW:g}"][1] == max(v[1] for v in D["oi_dist"].values())
@@ -310,7 +311,7 @@ page1 = f"""
 
   <h2 class="sec"><span class="num">03</span>指标支撑</h2>
   <table class="kpi">
-    <tr><td class="k">PCR · OI（窗口）<i>看跌 ÷ 看涨持仓</i></td><td class="v">{KPI['pcr_oi_window']:.3f}</td><td class="m" data-ed="kpi_pcr">{SEGMENTS['kpi_meaning']['pcr']}</td></tr>
+    <tr><td class="k">PCR · OI（窗口）<i>看跌 ÷ 看涨持仓</i></td><td class="v">{f"{KPI['pcr_oi_window']:.3f}" if KPI['pcr_oi_window'] is not None else "—"}</td><td class="m" data-ed="kpi_pcr">{SEGMENTS['kpi_meaning']['pcr']}</td></tr>
     <tr><td class="k">30D ATM IV<i>期权价里的波动预期</i></td><td class="v">{iv_txt if not _iv else f"{_iv:.1f}%"}</td><td class="m" data-ed="kpi_iv">{SEGMENTS['kpi_meaning']['iv']}</td></tr>
     <tr><td class="k">HV (30D)<i>实际走出来的波动</i></td><td class="v">{_hv:.1f}%</td><td class="m" data-ed="kpi_hv">{SEGMENTS['kpi_meaning']['hv']}</td></tr>
     <tr><td class="k">IV − HV<i>预期 − 现实</i></td><td class="v">{PLACEHOLDERS['spread']}pp</td><td class="m" data-ed="kpi_spread">{SEGMENTS['kpi_meaning']['spread']}</td></tr>

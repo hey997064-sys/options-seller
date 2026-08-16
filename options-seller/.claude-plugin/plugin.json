@@ -1,6 +1,6 @@
 {
   "name": "options-seller",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "期权卖方报告：输入美股标的，生成双向三档（稳健/均衡/进取）卖方合约筛选报告，含期权墙 OI 分布图与完整风险披露。依赖 longbridge CLI（需已登录且账户有美股期权行情权限），纯 Python 标准库，无 pip 依赖。",
   "author": {
     "name": "Longbridge Options Content"

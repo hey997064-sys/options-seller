@@ -60,4 +60,4 @@ python3 <插件目录>/skills/options-seller/scripts/run.py NVDA
 
 ## 版本
 
-见 [CHANGELOG](CHANGELOG.md)。当前 0.1.0。
+见 [CHANGELOG](CHANGELOG.md)。
